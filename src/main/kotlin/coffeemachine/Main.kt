@@ -1,11 +1,9 @@
 package coffeemachine
 
 fun main() {
-  println("Starting to make a coffee")
-  println("Grinding coffee beans")
-  println("Boiling water")
-  println("Mixing boiled water with crushed coffee beans")
-  println("Pouring coffee into the cup")
-  println("Pouring some milk into the cup")
-  println("Coffee is ready!")
+  val howManyCoffee = readln().toInt()
+  println("For $howManyCoffee cups of coffee you will need:")
+  println("${howManyCoffee * 200} ml of water")
+  println("${howManyCoffee * 50} ml of milk")
+  println("${howManyCoffee * 15} g of coffee beans")
 }
