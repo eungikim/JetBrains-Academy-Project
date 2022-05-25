@@ -1,109 +1,154 @@
 package coffeemachine
 
-
-var haveWater = 400
-var haveMilk = 540
-var haveCoffeeBean = 120
-var haveDpCup = 9
-var haveMoney = 550
-
-const val OPERATION_BUY = "buy"
-const val OPERATION_FILL = "fill"
-const val OPERATION_TAKE = "take"
-const val OPERATION_REMAINING = "remaining"
-const val OPERATION_EXIT = "exit"
-const val OPERATION_BACK = "back"
 fun main() {
+  val coffeeMachine = CoffeeMachine()
+  do {
+    coffeeMachine.insertInput(readln())
+  } while (!coffeeMachine.isTerminate)
+}
 
-  while (true) {
-    val operation = readLine()!!
-    when (operation) {
-      OPERATION_BUY -> makeCoffee()
-      OPERATION_FILL -> fillResource()
-      OPERATION_TAKE -> takeMoney()
-      OPERATION_REMAINING -> printState()
-      OPERATION_EXIT -> break
+class CoffeeMachine(
+  var water: Int = 400,
+  var milk: Int = 540,
+  var coffeeBean: Int = 120,
+  var dpCup: Int = 9,
+  var money: Int = 550
+) {
+  var state: Operation = Operation.STAY
+  var fillResourcePhase = 4
+  val isTerminate
+    get() = state == Operation.EXIT
+
+  fun insertInput(input: String) {
+    if (input.isEmpty()) return
+    state = when (state) {
+      Operation.STAY -> insertOperation(input)
+      Operation.BUY -> insertCoffeeMenu(input)
+      Operation.FILL -> insertResource(input)
+      else -> Operation.STAY
     }
   }
 
-}
-
-fun printState() {
-  println("The coffee machine has:")
-  println("$haveWater ml of water")
-  println("$haveMilk ml of milk")
-  println("$haveCoffeeBean g of coffee beans")
-  println("$haveDpCup disposable cups")
-  println("\$$haveMoney of money")
-}
-
-fun makeCoffee() {
-  val selectedMenu = readLine()!!
-  if (OPERATION_BACK == selectedMenu) return
-
-  when (selectedMenu.toInt()) {
-    1 -> {
-      if (haveWater < 250) {
-        println("Sorry, not enough water!")
-      } else if (haveCoffeeBean < 16) {
-        println("Sorry, not enough coffee beans!")
-      } else if (haveDpCup < 1) {
-        println("Sorry, not enough disposable cups!")
-      } else {
-        haveWater -= 250
-        haveCoffeeBean -= 16
-        haveDpCup--
-        haveMoney += 4
-        println("I have enough resources, making you a coffee!")
+  private fun insertOperation(operation: String): Operation {
+    return when (Operation.get(operation)) {
+      Operation.BUY -> Operation.BUY
+      Operation.FILL -> Operation.FILL
+      Operation.TAKE -> {
+        takeMoney()
+        Operation.STAY
       }
-    }
-    2 -> {
-      if (haveWater < 350) {
-        println("Sorry, not enough water!")
-      } else if (haveMilk < 75) {
-        println("Sorry, not enough milk!")
-      } else if (haveCoffeeBean < 20) {
-        println("Sorry, not enough coffee beans!")
-      } else if (haveDpCup < 1) {
-        println("Sorry, not enough disposable cups!")
-      } else {
-        haveWater -= 350
-        haveMilk -= 75
-        haveCoffeeBean -= 20
-        haveDpCup--
-        haveMoney += 7
-        println("I have enough resources, making you a coffee!")
+      Operation.REMAINING -> {
+        printState()
+        Operation.STAY
       }
+      Operation.EXIT -> Operation.EXIT
+      else -> Operation.STAY
     }
-    3 -> {
-      if (haveWater < 200) {
-        println("Sorry, not enough water!")
-      } else if (haveMilk < 100) {
-        println("Sorry, not enough milk!")
-      } else if (haveCoffeeBean < 12) {
-        println("Sorry, not enough coffee beans!")
-      } else if (haveDpCup < 1) {
-        println("Sorry, not enough disposable cups!")
-      } else {
-        haveWater -= 200
-        haveMilk -= 100
-        haveCoffeeBean -= 12
-        haveDpCup--
-        haveMoney += 6
-        println("I have enough resources, making you a coffee!")
+  }
+
+  private fun insertCoffeeMenu(menuInput: String): Operation {
+    if (Operation.BACK == Operation.get(menuInput))
+      return Operation.STAY
+
+    try {
+      val menu = menuInput.toInt()
+      val coffee = selectCoffee(menu)
+      if (coffee != null) {
+        makeCoffee(coffee.water, coffee.milk, coffee.coffeeBean, coffee.money)
+      }
+    } catch (_: NumberFormatException) { }
+    return Operation.STAY
+  }
+
+  private fun insertResource(ingredientInput: String): Operation {
+    try {
+      val ingredient = ingredientInput.toInt()
+      fillResource(fillResourcePhase, ingredient)
+      fillResourcePhase--
+      if (fillResourcePhase <= 0) {
+        fillResourcePhase = 4
+        return Operation.STAY
+      }
+    } catch (_: java.lang.NumberFormatException) { }
+    return Operation.FILL
+  }
+
+  private fun printState() {
+    println("The coffee machine has:")
+    println("$water ml of water")
+    println("$milk ml of milk")
+    println("$coffeeBean g of coffee beans")
+    println("$dpCup disposable cups")
+    println("\$$money of money")
+  }
+
+  private fun selectCoffee(menuId: Int): Coffee? = Coffee.findByMenuId(menuId)
+
+  private fun makeCoffee(water: Int, milk: Int, coffeeBean: Int, money: Int) {
+    if (this.water < water) {
+      println("Sorry, not enough water!")
+    } else if (this.milk < milk) {
+      println("Sorry, not enough milk!")
+    } else if (this.coffeeBean < coffeeBean) {
+      println("Sorry, not enough disposable cups!")
+    } else if (this.dpCup < 1) {
+      println("Sorry, not enough disposable cups!")
+    } else {
+      this.water -= water
+      this.milk -= milk
+      this.coffeeBean -= coffeeBean
+      this.dpCup--
+      this.money += money
+      println("I have enough resources, making you a coffee!")
+    }
+  }
+
+  private fun fillResource(phase: Int, ingredient: Int) {
+    when (phase) {
+      4 -> water += ingredient
+      3 -> milk += ingredient
+      2 -> coffeeBean += ingredient
+      1 -> dpCup += ingredient
+    }
+  }
+
+  private fun takeMoney() {
+    println("I gave you \$$money")
+    money = 0
+  }
+
+  enum class Operation(val str: String) {
+    STAY("stay"),
+    BUY("buy"),
+    FILL("fill"),
+    TAKE("take"),
+    REMAINING("remaining"),
+    EXIT("exit"),
+    BACK("back");
+
+    companion object {
+      fun get(str: String): Operation? {
+        for (e in Operation.values()) {
+          if (e.str == str) return e
+        }
+        return null
       }
     }
   }
-}
 
-fun fillResource() {
-  haveWater += readLine()!!.toInt()
-  haveMilk += readLine()!!.toInt()
-  haveCoffeeBean += readLine()!!.toInt()
-  haveDpCup += readLine()!!.toInt()
-}
+  enum class Coffee(val menuId: Int, val water: Int, val milk: Int, val coffeeBean: Int, val money: Int) {
+    ESPRESSO(1, water = 250, milk = 0, coffeeBean = 16, money = 4),
+    LATTE(2, water = 350, milk = 75, coffeeBean = 20, money = 7),
+    CAPPUCCINO(3, water = 200, milk = 100, coffeeBean = 12, money = 6);
 
-fun takeMoney() {
-  println("I gave you \$$haveMoney")
-  haveMoney = 0
+    companion object {
+      fun findByMenuId(id: Int): Coffee? {
+        for (e in Coffee.values()) {
+          if (id == e.menuId) return e
+        }
+        return null
+      }
+    }
+  }
+
 }
