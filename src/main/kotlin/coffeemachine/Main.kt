@@ -3,52 +3,57 @@ package coffeemachine
 fun main() {
   val coffeeMachine = CoffeeMachine()
   do {
-    coffeeMachine.insertInput(readln())
+    coffeeMachine.listenInput()
   } while (!coffeeMachine.isTerminate)
 }
 
 class CoffeeMachine(
-  var water: Int = 400,
-  var milk: Int = 540,
-  var coffeeBean: Int = 120,
-  var dpCup: Int = 9,
-  var money: Int = 550
+  private var water: Int = 400,
+  private var milk: Int = 540,
+  private var coffeeBean: Int = 120,
+  private var dpCup: Int = 9,
+  private var money: Int = 550
 ) {
-  var state: Operation = Operation.STAY
-  var fillResourcePhase = 4
+  var state: StateMode = StateMode.STANDBY
   val isTerminate
-    get() = state == Operation.EXIT
+    get() = state == StateMode.EXIT
 
-  fun insertInput(input: String) {
+  fun listenInput() {
+    print(state.msg)
+    val input = readln()
     if (input.isEmpty()) return
     state = when (state) {
-      Operation.STAY -> insertOperation(input)
-      Operation.BUY -> insertCoffeeMenu(input)
-      Operation.FILL -> insertResource(input)
-      else -> Operation.STAY
+      StateMode.STANDBY -> insertOperation(input)
+      StateMode.ORDER_COFFEE -> insertCoffeeMenu(input)
+      StateMode.FILL_WATER,
+      StateMode.FILL_MILK,
+      StateMode.FILL_COFFEE_BEAN,
+      StateMode.FILL_CUP -> insertResource(input, state)
+      else -> StateMode.STANDBY
     }
+    println()
   }
 
-  private fun insertOperation(operation: String): Operation {
-    return when (Operation.get(operation)) {
-      Operation.BUY -> Operation.BUY
-      Operation.FILL -> Operation.FILL
-      Operation.TAKE -> {
+  private fun insertOperation(operation: String): StateMode {
+    return when (Operation.valueOf(operation)) {
+      Operation.buy -> StateMode.ORDER_COFFEE
+      Operation.fill -> StateMode.FILL_WATER
+      Operation.take -> {
         takeMoney()
-        Operation.STAY
+        StateMode.STANDBY
       }
-      Operation.REMAINING -> {
+      Operation.remaining -> {
         printState()
-        Operation.STAY
+        StateMode.STANDBY
       }
-      Operation.EXIT -> Operation.EXIT
-      else -> Operation.STAY
+      Operation.exit -> StateMode.EXIT
+      else -> StateMode.STANDBY
     }
   }
 
-  private fun insertCoffeeMenu(menuInput: String): Operation {
-    if (Operation.BACK == Operation.get(menuInput))
-      return Operation.STAY
+  private fun insertCoffeeMenu(menuInput: String): StateMode {
+    if (Operation.back.name == menuInput)
+      return StateMode.STANDBY
 
     try {
       val menu = menuInput.toInt()
@@ -57,23 +62,26 @@ class CoffeeMachine(
         makeCoffee(coffee.water, coffee.milk, coffee.coffeeBean, coffee.money)
       }
     } catch (_: NumberFormatException) { }
-    return Operation.STAY
+    return StateMode.STANDBY
   }
 
-  private fun insertResource(ingredientInput: String): Operation {
+  private fun insertResource(ingredientInput: String, phase: StateMode): StateMode {
     try {
       val ingredient = ingredientInput.toInt()
-      fillResource(fillResourcePhase, ingredient)
-      fillResourcePhase--
-      if (fillResourcePhase <= 0) {
-        fillResourcePhase = 4
-        return Operation.STAY
+      fillResource(phase, ingredient)
+      when (phase) {
+        StateMode.FILL_WATER -> return StateMode.FILL_MILK
+        StateMode.FILL_MILK -> return StateMode.FILL_COFFEE_BEAN
+        StateMode.FILL_COFFEE_BEAN -> return StateMode.FILL_CUP
+        StateMode.FILL_CUP -> return StateMode.STANDBY
+        else -> {}
       }
     } catch (_: java.lang.NumberFormatException) { }
-    return Operation.FILL
+    return StateMode.STANDBY
   }
 
   private fun printState() {
+    println()
     println("The coffee machine has:")
     println("$water ml of water")
     println("$milk ml of milk")
@@ -90,7 +98,7 @@ class CoffeeMachine(
     } else if (this.milk < milk) {
       println("Sorry, not enough milk!")
     } else if (this.coffeeBean < coffeeBean) {
-      println("Sorry, not enough disposable cups!")
+      println("Sorry, not enough coffee beans!")
     } else if (this.dpCup < 1) {
       println("Sorry, not enough disposable cups!")
     } else {
@@ -103,12 +111,13 @@ class CoffeeMachine(
     }
   }
 
-  private fun fillResource(phase: Int, ingredient: Int) {
+  private fun fillResource(phase: StateMode, ingredient: Int) {
     when (phase) {
-      4 -> water += ingredient
-      3 -> milk += ingredient
-      2 -> coffeeBean += ingredient
-      1 -> dpCup += ingredient
+      StateMode.FILL_WATER -> water += ingredient
+      StateMode.FILL_MILK -> milk += ingredient
+      StateMode.FILL_COFFEE_BEAN -> coffeeBean += ingredient
+      StateMode.FILL_CUP -> dpCup += ingredient
+      else -> {}
     }
   }
 
@@ -117,23 +126,18 @@ class CoffeeMachine(
     money = 0
   }
 
-  enum class Operation(val str: String) {
-    STAY("stay"),
-    BUY("buy"),
-    FILL("fill"),
-    TAKE("take"),
-    REMAINING("remaining"),
-    EXIT("exit"),
-    BACK("back");
+  enum class Operation {
+    buy, fill, take, remaining, exit, back;
+  }
 
-    companion object {
-      fun get(str: String): Operation? {
-        for (e in Operation.values()) {
-          if (e.str == str) return e
-        }
-        return null
-      }
-    }
+  enum class StateMode(val msg: String) {
+    STANDBY("Write action (buy, fill, take, remaining, exit): "),
+    ORDER_COFFEE("What do you want to buy? 1 - espresso, 2 - latte, 3 - cappuccino, back - to main menu: "),
+    FILL_WATER("Write how many ml of water do you want to add: "),
+    FILL_MILK("Write how many ml of milk do you want to add: "),
+    FILL_COFFEE_BEAN("Write how many grams of coffee beans do you want to add: "),
+    FILL_CUP("Write how many disposable cups of coffee do you want to add: "),
+    EXIT(""),
   }
 
   enum class Coffee(val menuId: Int, val water: Int, val milk: Int, val coffeeBean: Int, val money: Int) {
