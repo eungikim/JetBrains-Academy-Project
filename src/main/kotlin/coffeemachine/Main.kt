@@ -34,20 +34,24 @@ class CoffeeMachine(
     println()
   }
 
-  private fun insertOperation(operation: String): StateMode {
-    return when (Operation.valueOf(operation)) {
-      Operation.buy -> StateMode.ORDER_COFFEE
-      Operation.fill -> StateMode.FILL_WATER
-      Operation.take -> {
-        takeMoney()
-        StateMode.STANDBY
+  private fun insertOperation(operationInput: String): StateMode {
+    return try {
+      when (Operation.valueOf(operationInput)) {
+        Operation.buy -> StateMode.ORDER_COFFEE
+        Operation.fill -> StateMode.FILL_WATER
+        Operation.take -> {
+          takeMoney()
+          StateMode.STANDBY
+        }
+        Operation.remaining -> {
+          printState()
+          StateMode.STANDBY
+        }
+        Operation.exit -> StateMode.EXIT
+        else -> StateMode.STANDBY
       }
-      Operation.remaining -> {
-        printState()
-        StateMode.STANDBY
-      }
-      Operation.exit -> StateMode.EXIT
-      else -> StateMode.STANDBY
+    } catch (e: IllegalArgumentException) {
+      StateMode.STANDBY
     }
   }
 
@@ -76,7 +80,8 @@ class CoffeeMachine(
         StateMode.FILL_CUP -> return StateMode.STANDBY
         else -> {}
       }
-    } catch (_: java.lang.NumberFormatException) { }
+    } catch (_: java.lang.NumberFormatException) {
+    }
     return StateMode.STANDBY
   }
 
